@@ -1,7 +1,80 @@
 import pygame, asyncio
 from sys import exit 
 import math
-from settings import *
+class Character:
+    def __init__(self, name, power, damage, sheet_position, map_position, speed):
+        self.name = name
+        self.power = power
+        self.damage = damage
+        self.sheet_position = sheet_position
+        self.map_position = map_position
+        self.speed = speed
+
+# Store  game color's variable
+class Colors:
+    WHITE = (255, 255, 255)
+    YELLOW = (255, 215, 0)
+    DARK_GRAY = (33, 33, 33)
+
+# Store game asset's path variable
+class Paths:
+    BACKGROUND = "background/background.png"
+    CHARACTERS_SPRITE_SHEET = "assets/characters.png"
+    MENU_IMAGE = "menu.png"
+    BULLET_IMAGE = "bullet/1.png"
+    FONT_PATH = "kongtext.ttf"  
+
+CHARACTERS = [
+    Character(name="Vulcanus", power="fire", damage=10, sheet_position=(468,288), map_position=(400,300),speed=4),
+    Character(name="Aeris", power="wind", damage=15, sheet_position=(312, 288), map_position=(400,300),speed=4),
+    Character(name="Voltara", power="thunder", damage=20, sheet_position=(156, 0), map_position=(400,300),speed=4),
+    Character(name="Stonewarden", power="earth", damage=25, sheet_position=(0, 0), map_position=(400,300),speed=4),
+    Character(name="Nereida", power="water", damage=30, sheet_position=(0, 288), map_position=(400,300),speed=4),
+]
+
+ENEMIES = [
+    Character(name="Infernus", power="fire", damage=10, sheet_position=(468,288), map_position=(0,0),speed=3),
+    Character(name="Galeblade", power="wind", damage=15, sheet_position=(312, 288), map_position=(1600,450),speed=4),
+    Character(name="Fulgur", power="thunder", damage=20, sheet_position=(156, 0), map_position=(1600,650),speed=2),
+    Character(name="Terravus", power="earth", damage=25, sheet_position=(0, 0), map_position=(1500,750),speed=3),
+    Character(name="Tsunewave", power="water", damage=30, sheet_position=(0, 288), map_position=(1800,300),speed=3),
+]
+
+# Define damage multipliers
+DAMAGE_MATRIX = {
+    'fire': {'wind': 2, 'water': 0.5, 'thunder': 1, 'earth': 0.3},
+    'wind': {'thunder': 2, 'earth': 0.5, 'water': 1, 'fire': 0.3},
+    'thunder': {'earth': 2, 'water': 0.5, 'fire': 1, 'wind': 0.3},
+    'earth': {'water': 2, 'fire': 0.5, 'wind': 1, 'thunder': 0.3},
+    'water': {'fire': 2, 'wind': 0.5, 'thunder': 1, 'earth': 0.3},
+}
+
+
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+FPS = 60
+
+# Define powers and damage matrix
+POWERS = ['fire', 'wind', 'thunder', 'earth', 'water']
+
+
+# Player settings
+PLAYER_START_X = 400
+PLAYER_START_Y = 300
+PLAYER_SCALE = 0.4
+PLAYER_SPEED = 4
+
+ENEMY_STOP_DISTANCE = 150
+ENEMY_SHOOT_STOP_DISTANCE = 300
+ENEMY_SPEED = 3
+
+SHOOT_COOLDOWN = 40
+
+# Projectile settings
+PROJECTILE_SCALE = 1.4
+PROJECTILE_SPEED = 8
+
+PROJECTILE_LIFETIME = 1200
 
 pygame.init()
 
@@ -67,33 +140,6 @@ def draw_character_menu(selected_index):
 
     pygame.display.flip()
 
-def character_selection_menu():
-    selected_index = 0
-    menu_image = pygame.image.load("menu.png")
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    selected_index = (selected_index - 1) % len(CHARACTERS)
-                elif event.key == pygame.K_DOWN:
-                    selected_index = (selected_index + 1) % len(CHARACTERS)
-                elif event.key == pygame.K_RETURN:
-                    return CHARACTERS[selected_index]
-
-        screen.fill((33, 33, 33))
-        x_centered = (screen.get_width() - menu_image.get_width()) // 2
-        screen.blit(menu_image, (x_centered, 0))
-
-
-        draw_character_menu(selected_index)
-        clock.tick(FPS)
-
-
-
 class Player(pygame.sprite.Sprite):
     def __init__(self, sheet_position=(0, 0), power="fire", damage=10, map_position=(400,300), speed = 4, max_health=100):
         super().__init__()
@@ -130,11 +176,12 @@ class Player(pygame.sprite.Sprite):
 
         self.health = self.health - damage_taken
 
-        print(f"Player: {self.power}, projectile_power: {projectile_power}")
-        print(f"Player took {damage_taken} damage. Remaining health: {self.health}\n")
+        # print(f"Player: {self.power}, projectile_power: {projectile_power}")
+        # print(f"Player took {damage_taken} damage. Remaining health: {self.health}\n")
 
         if self.health <= 0:
-            print("Player defeated!")
+            pass
+            # print("Player defeated!")
 
     def load_sprites(self, sheet_position):
         sprite_width, sprite_height = 52, 72
@@ -295,11 +342,11 @@ class Enemy(pygame.sprite.Sprite):
 
         self.health -= damage_taken
 
-        print(f"Enemy power: {self.power}, projectile_power: {projectile_power}")
-        print(f"Enemy took {damage_taken} damage. Remaining health: {self.health}")
+        # print(f"Enemy power: {self.power}, projectile_power: {projectile_power}")
+        # print(f"Enemy took {damage_taken} damage. Remaining health: {self.health}")
 
         if self.health <= 0:
-            print("Enemy defeated!")
+            # print("Enemy defeated!")
             player.enemies_killed += 1
 
 
@@ -314,7 +361,7 @@ class Enemy(pygame.sprite.Sprite):
         # Get the distance to the player in pixels
         distance_to_player = direction_to_player.length()
 
-        print("Distance to player:", distance_to_player) 
+        # print("Distance to player:", distance_to_player) 
 
         if distance_to_player < ENEMY_STOP_DISTANCE:
             # Normalize the vector to get a unit vector
@@ -505,27 +552,54 @@ enemy_group.add(*enemies)
 all_sprites_group.add(*enemies)
 selected_character = ""
 
+async def character_selection_menu():
+    selected_index = 0
+    menu_image = pygame.image.load("menu.png")
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    selected_index = (selected_index - 1) % len(CHARACTERS)
+                elif event.key == pygame.K_DOWN:
+                    selected_index = (selected_index + 1) % len(CHARACTERS)
+                elif event.key == pygame.K_RETURN:
+                    return CHARACTERS[selected_index]
+
+        screen.fill((33, 33, 33))
+        x_centered = (screen.get_width() - menu_image.get_width()) // 2
+        screen.blit(menu_image, (x_centered, 0))
+
+        draw_character_menu(selected_index)
+
+        pygame.display.flip()
+        await asyncio.sleep(0)
+
 async def main():
     global all_sprites_group, projectile_group, enemy_group, selected_character, player
 
+    selected_character = await character_selection_menu()
+
+    player = Player(
+        sheet_position=selected_character.sheet_position,
+        power=selected_character.power,
+        damage=selected_character.damage,
+        speed=selected_character.speed
+    )
+    ui = UI(player)
+    all_sprites_group.add(player)
+
     while True:
-        keys = pygame.key.get_pressed()
+        pygame.event.pump()  # Process events
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
 
-        if not selected_character:
-            selected_character = character_selection_menu()
-            player = Player(
-                sheet_position=selected_character.sheet_position,
-                power=selected_character.power,
-                damage=selected_character.damage,
-                speed = selected_character.speed
-            )
-            ui = UI(player)
-            all_sprites_group.add(player)
-        
         camera.custom_draw(player)
 
         all_sprites_group.update()
@@ -536,3 +610,4 @@ async def main():
         await asyncio.sleep(0)
 
 asyncio.run(main())
+
