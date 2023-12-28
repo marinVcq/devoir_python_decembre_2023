@@ -2,6 +2,24 @@ import pygame, asyncio, os
 from sys import exit 
 import math
 
+# Game specs
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+FPS = 60
+
+# Gameplay specs
+PLAYER_START_X = 400
+PLAYER_START_Y = 300
+PLAYER_SCALE = 0.4
+PLAYER_SPEED = 4
+ENEMY_STOP_DISTANCE = 250
+ENEMY_SHOOT_STOP_DISTANCE = 600
+ENEMY_SPEED = 3
+SHOOT_COOLDOWN = 40
+PROJECTILE_SCALE = 2.4
+PROJECTILE_SPEED = 8
+PROJECTILE_LIFETIME = 1200
+
 # Character class
 class Character:
     def __init__(self, name, power, damage, sheet_position, map_position, speed):
@@ -33,6 +51,10 @@ class GameState:
     PLAYING = 2
     GAME_OVER = 3
 
+current_game_state = GameState.CHARACTER_SELECTION
+
+POWERS = ['fire', 'wind', 'thunder', 'earth', 'water']
+
 CHARACTERS = [
     Character(name="Vulcanus", power="fire", damage=10, sheet_position=(468,288), map_position=(400,300),speed=4),
     Character(name="Aeris", power="wind", damage=15, sheet_position=(312, 288), map_position=(400,300),speed=4),
@@ -49,63 +71,6 @@ ENEMIES = [
     Character(name="Tsunewave", power="water", damage=30, sheet_position=(0, 288), map_position=(1800,300),speed=3),
 ]
 
-
-
-current_game_state = GameState.CHARACTER_SELECTION
-
-async def start_screen():
-    start_font = pygame.font.Font("kongtext.ttf", 20)
-    welcome_text = "Bienvenue Aventurier, Dans ce jeu tu dois parcourir les 5 mondes (feu, eau, desert, etc...) et capturer l'esprit qui s'y trouve ! choisis un pouvoir qui te permettra la capture facile d'au moins un et combat les autres habilement"
-    welcome_surface = start_font.render(welcome_text, True, (255, 255, 255))
-    welcome_rect = welcome_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4 + 60))
-
-    start_button_text_surface = start_font.render("Press 'S' to start", True, (255, 255, 255))
-    start_button_rect = start_button_text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_s:
-                    return True
-
-        screen.fill((33, 33, 33))
-        screen.blit(welcome_surface, welcome_rect)
-        screen.blit(start_button_text_surface, start_button_rect)
-        pygame.display.flip()
-        await asyncio.sleep(0)
-
-async def end_screen(player_won):
-    end_font = pygame.font.Font("kongtext.ttf", 40)
-    result_text = "You Win!" if player_won else "Game Over"
-    result_surface = end_font.render(result_text, True, (255, 255, 255))
-    result_rect = result_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-
-    restart_text_surface = end_font.render("Press 'R' to restart", True, (255, 255, 255))
-    restart_rect = restart_text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_r:
-                    current_game_state = GameState.CHARACTER_SELECTION
-                    return True
-
-        screen.fill((33, 33, 33))
-        screen.blit(result_surface, result_rect)
-        screen.blit(restart_text_surface, restart_rect)
-        pygame.display.flip()
-        await asyncio.sleep(0)
-
-
-
-
-
 DAMAGE_MATRIX = {
     ("fire", "water"): 25,
     ("wind", "fire"): 25,
@@ -114,31 +79,42 @@ DAMAGE_MATRIX = {
     ("water", "earth"): 25,
 }
 
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-FPS = 60
+async def start_screen():
 
-# Define powers and damage matrix
-POWERS = ['fire', 'wind', 'thunder', 'earth', 'water']
+    start_screen_image = pygame.image.load("start_screen.png")
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    return True
+
+        screen.fill((0,0,0))
+        screen.blit(start_screen_image, (0,0))
+        pygame.display.flip()
+        await asyncio.sleep(0)
 
 
-# Player settings
-PLAYER_START_X = 400
-PLAYER_START_Y = 300
-PLAYER_SCALE = 0.4
-PLAYER_SPEED = 4
+async def end_screen(player_won):
 
-ENEMY_STOP_DISTANCE = 150
-ENEMY_SHOOT_STOP_DISTANCE = 300
-ENEMY_SPEED = 3
+    end_screen_image = pygame.image.load("end_screen_victory.png") if player_won else pygame.image.load("end_screen_lose.png") 
 
-SHOOT_COOLDOWN = 40
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    return True
 
-# Projectile settings
-PROJECTILE_SCALE = 2.4
-PROJECTILE_SPEED = 8
-
-PROJECTILE_LIFETIME = 1200
+        screen.fill((0,0,0))
+        screen.blit(end_screen_image, (0,0))
+        pygame.display.flip()
+        await asyncio.sleep(0)
 
 pygame.init()
 
@@ -147,7 +123,7 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Exorsit: Shell Unleashed")
 clock = pygame.time.Clock()
 
-# Load images
+# Load useful images
 background = pygame.image.load("background/background.png").convert()
 sprite_sheet = pygame.image.load("assets/characters.png").convert_alpha()
 
@@ -160,7 +136,7 @@ class UI:
         health_text = self.font.render(f"Health: {self.player.health}", True, (255, 255, 255))
         enemies_text = self.font.render(f"Enemies Killed: {self.player.enemies_killed}", True, (255, 255, 255))
 
-        # Adjust the position of UI elements as needed
+        # Position of UI elements as needed
         health_rect = health_text.get_rect(topleft=(10, 10))
         enemies_rect = enemies_text.get_rect(topleft=(10, 50))
 
@@ -171,7 +147,7 @@ class UI:
 def draw_character_menu(selected_index):
     # Load the custom font
     menu_font = pygame.font.Font("kongtext.ttf", 22)
-    label_font = pygame.font.Font("kongtext.ttf", 24)  # Font for the label
+    label_font = pygame.font.Font("kongtext.ttf", 24)
 
     line_spacing = 55
     label_margin_top = 60
@@ -179,7 +155,7 @@ def draw_character_menu(selected_index):
     label_text = label_font.render("Choose Your Character", True, (255, 255, 255))
     label_rect = label_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4 + label_margin_top))
 
-    # Blit the label onto the screen
+    # Blit label onto the screen
     screen.blit(label_text, label_rect)
 
 
@@ -229,12 +205,11 @@ class Player(pygame.sprite.Sprite):
         damage_taken = DAMAGE_MATRIX.get((self.power, projectile_power), default_damage)
         self.health -= damage_taken
 
-        # print(f"Player: {self.power}, projectile_power: {projectile_power}")
+        # print(f"Player power: {self.power}, projectile_power: {projectile_power}")
         # print(f"Player took {damage_taken} damage. Remaining health: {self.health}\n")
 
         if self.health <= 0:
             current_game_state = GameState.GAME_OVER
-            player.kill()
 
     def load_sprites(self, sheet_position):
         sprite_width, sprite_height = 52, 72
@@ -258,9 +233,6 @@ class Player(pygame.sprite.Sprite):
 
         return sprites
 
-
-
-
     def user_input(self):
         self.velocity_x = 0
         self.velocity_y = 0
@@ -280,8 +252,6 @@ class Player(pygame.sprite.Sprite):
             self.is_shooting()
         else:
             self.shoot = False
-
-            
 
         if self.velocity_x != 0 and self.velocity_y != 0:
             self.velocity_x /= math.sqrt(2)
@@ -384,8 +354,8 @@ class Enemy(pygame.sprite.Sprite):
         damage_taken = DAMAGE_MATRIX.get((self.power, projectile_power), default_damage)
         self.health -= damage_taken
 
-        # print(f"Player: {self.power}, projectile_power: {projectile_power}")
-        # print(f"Player took {damage_taken} damage. Remaining health: {self.health}\n")
+        # print(f"Enemy power: {self.power}, projectile_power: {projectile_power}")
+        # print(f"Enemy took {damage_taken} damage. Remaining health: {self.health}\n")
 
         if self.health <= 0:
             player.enemies_killed += 1
@@ -629,7 +599,7 @@ async def character_selection_menu():
         await asyncio.sleep(0)
 
 async def main():
-    global all_sprites_group, projectile_group, enemy_group, selected_character, player, current_game_state
+    global all_sprites_group, projectile_group, enemy_group, selected_character, player, current_game_state, enemies
 
     while True:
         pygame.event.pump()
@@ -651,7 +621,6 @@ async def main():
                 )
                 all_sprites_group.add(player)
                 ui = UI(player)
-                enemies = [Enemy(map_position=enemy.map_position, sheet_position=enemy.sheet_position, power=enemy.power, damage=enemy.damage, speed=enemy.speed) for enemy in ENEMIES]
                 current_game_state = GameState.PLAYING
 
         elif current_game_state == GameState.PLAYING:
@@ -677,6 +646,10 @@ async def main():
                 all_sprites_group.empty()
                 projectile_group.empty()
                 enemy_group.empty()
+                # Recreate enemies
+                enemies = [Enemy(map_position=enemy.map_position, sheet_position=enemy.sheet_position,power=enemy.power, damage=enemy.damage, speed=enemy.speed) for enemy in ENEMIES]
+                enemy_group.add(*enemies)
+                all_sprites_group.add(*enemies)
                 ui = UI(player)
 
         # Update the screen
