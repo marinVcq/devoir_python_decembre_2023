@@ -7,6 +7,20 @@ class Character:
         self.map_position = map_position
         self.speed = speed
 
+# Store  game color's variable
+class Colors:
+    WHITE = (255, 255, 255)
+    YELLOW = (255, 215, 0)
+    DARK_GRAY = (33, 33, 33)
+
+# Store game asset's path variable
+class Paths:
+    BACKGROUND = "background/background.png"
+    CHARACTERS_SPRITE_SHEET = "assets/characters.png"
+    MENU_IMAGE = "menu.png"
+    BULLET_IMAGE = "bullet/1.png"
+    FONT_PATH = "kongtext.ttf"  
+
 CHARACTERS = [
     Character(name="Vulcanus", power="fire", damage=10, sheet_position=(468,288), map_position=(400,300),speed=4),
     Character(name="Aeris", power="wind", damage=15, sheet_position=(312, 288), map_position=(400,300),speed=4),
@@ -22,6 +36,16 @@ ENEMIES = [
     Character(name="Terravus", power="earth", damage=25, sheet_position=(0, 0), map_position=(1500,750),speed=3),
     Character(name="Tsunewave", power="water", damage=30, sheet_position=(0, 288), map_position=(1800,300),speed=3),
 ]
+
+# Define damage multipliers
+DAMAGE_MATRIX = {
+    'fire': {'wind': 2, 'water': 0.5, 'thunder': 1, 'earth': 0.3},
+    'wind': {'thunder': 2, 'earth': 0.5, 'water': 1, 'fire': 0.3},
+    'thunder': {'earth': 2, 'water': 0.5, 'fire': 1, 'wind': 0.3},
+    'earth': {'water': 2, 'fire': 0.5, 'wind': 1, 'thunder': 0.3},
+    'water': {'fire': 2, 'wind': 0.5, 'thunder': 1, 'earth': 0.3},
+}
+
 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
@@ -41,10 +65,10 @@ ENEMY_STOP_DISTANCE = 150
 ENEMY_SHOOT_STOP_DISTANCE = 300
 ENEMY_SPEED = 3
 
-SHOOT_COOLDOWN = 100
+SHOOT_COOLDOWN = 40
 
 # Projectile settings
 PROJECTILE_SCALE = 1.4
 PROJECTILE_SPEED = 8
 
-PROJECTILE_LIFETIME = 750
+PROJECTILE_LIFETIME = 1200

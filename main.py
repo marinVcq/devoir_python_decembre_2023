@@ -1,4 +1,4 @@
-import pygame
+import pygame, asyncio
 from sys import exit 
 import math
 from settings import *
@@ -14,24 +14,14 @@ clock = pygame.time.Clock()
 background = pygame.image.load("background/background.png").convert()
 sprite_sheet = pygame.image.load("assets/characters.png").convert_alpha()
 
-# Define damage multipliers
-DAMAGE_MATRIX = {
-    'fire': {'wind': 2, 'water': 0.5, 'thunder': 1, 'earth': 0.3},
-    'wind': {'thunder': 2, 'earth': 0.5, 'water': 1, 'fire': 0.3},
-    'thunder': {'earth': 2, 'water': 0.5, 'fire': 1, 'wind': 0.3},
-    'earth': {'water': 2, 'fire': 0.5, 'wind': 1, 'thunder': 0.3},
-    'water': {'fire': 2, 'wind': 0.5, 'thunder': 1, 'earth': 0.3},
-}
-
 class UI:
     def __init__(self, player):
         self.player = player
         self.font = pygame.font.Font(None, 36)
-        self.enemies_killed = 0
 
     def update(self):
         health_text = self.font.render(f"Health: {self.player.health}", True, (255, 255, 255))
-        enemies_text = self.font.render(f"Enemies Killed: {self.enemies_killed}", True, (255, 255, 255))
+        enemies_text = self.font.render(f"Enemies Killed: {self.player.enemies_killed}", True, (255, 255, 255))
 
         # Adjust the position of UI elements as needed
         health_rect = health_text.get_rect(topleft=(10, 10))
@@ -121,6 +111,7 @@ class Player(pygame.sprite.Sprite):
         self.damage = damage
         self.max_health = max_health
         self.health = max_health
+        self.enemies_killed = 0
 
     def take_damage(self, projectile_power):
 
@@ -135,7 +126,7 @@ class Player(pygame.sprite.Sprite):
         elif self.power == "water" and projectile_power == "earth":
             damage_taken =self.health - self.health / 2
         else:
-            damage_taken = 10
+            damage_taken = 2
 
         self.health = self.health - damage_taken
 
@@ -272,7 +263,21 @@ class Enemy(pygame.sprite.Sprite):
         self.damage = damage
         self.max_health = max_health
         self.health = max_health
-    
+
+    def draw_health_bar(self, screen, offset_x, offset_y):
+        # Calculate the position of the health bar above the enemy
+        health_bar_x = self.rect.topleft[0] - offset_x
+        health_bar_y = self.rect.topleft[1] - offset_y - 10  # Adjust the vertical offset as needed
+
+        # Calculate the width of the health bar based on the current health
+        health_bar_width = int((self.health / self.max_health) * self.rect.width)
+
+        # Draw the health bar background
+        pygame.draw.rect(screen, (255, 0, 0), (health_bar_x, health_bar_y, self.rect.width, 5))
+
+        # Draw the filled part of the health bar based on current health
+        pygame.draw.rect(screen, (0, 255, 0), (health_bar_x, health_bar_y, health_bar_width, 5))
+
     def take_damage(self, projectile_power):
 
         if self.power == "fire" and projectile_power == "water":
@@ -295,6 +300,7 @@ class Enemy(pygame.sprite.Sprite):
 
         if self.health <= 0:
             print("Enemy defeated!")
+            player.enemies_killed += 1
 
 
 
@@ -308,7 +314,7 @@ class Enemy(pygame.sprite.Sprite):
         # Get the distance to the player in pixels
         distance_to_player = direction_to_player.length()
 
-        # print("Distance to player:", distance_to_player) 
+        print("Distance to player:", distance_to_player) 
 
         if distance_to_player < ENEMY_STOP_DISTANCE:
             # Normalize the vector to get a unit vector
@@ -436,6 +442,9 @@ class Camera(pygame.sprite.Group):
             offset_pos = sprite.rect.topleft[0] - offset_x, sprite.rect.topleft[1] - offset_y
             screen.blit(sprite.image, offset_pos)
 
+            if isinstance(sprite, Enemy):
+                sprite.draw_health_bar(screen, offset_x, offset_y)
+
 class Projectile(pygame.sprite.Sprite):
     def __init__(self, x, y, player_direction, angle = 0, power = "fire", shooter = "null"):
         super().__init__()
@@ -487,47 +496,43 @@ class Projectile(pygame.sprite.Sprite):
 
 all_sprites_group = pygame.sprite.Group()
 projectile_group = pygame.sprite.Group()
-enemy_group = pygame.sprite.Group()     
-
+enemy_group = pygame.sprite.Group()
+enemies = [Enemy(map_position=enemy.map_position, sheet_position=enemy.sheet_position, power=enemy.power, damage=enemy.damage, speed=enemy.speed) for enemy in ENEMIES]
 # Create the player instance with a different character
 camera = Camera()
-
 # Create enemy instances using the ENEMIES list
-enemies = [Enemy(map_position=enemy.map_position, sheet_position=enemy.sheet_position, power=enemy.power, damage=enemy.damage, speed=enemy.speed) for enemy in ENEMIES]
 enemy_group.add(*enemies)
 all_sprites_group.add(*enemies)
 selected_character = ""
 
+async def main():
+    global all_sprites_group, projectile_group, enemy_group, selected_character, player
 
-while True:
-    keys = pygame.key.get_pressed()
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            exit()
+    while True:
+        keys = pygame.key.get_pressed()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
 
-    if not selected_character:
-        selected_character = character_selection_menu()
-        player = Player(
-            sheet_position=selected_character.sheet_position,
-            power=selected_character.power,
-            damage=selected_character.damage,
-            speed = selected_character.speed
-        )
-        ui = UI(player)
-        all_sprites_group.add(player)
-    
-    camera.custom_draw(player)
+        if not selected_character:
+            selected_character = character_selection_menu()
+            player = Player(
+                sheet_position=selected_character.sheet_position,
+                power=selected_character.power,
+                damage=selected_character.damage,
+                speed = selected_character.speed
+            )
+            ui = UI(player)
+            all_sprites_group.add(player)
+        
+        camera.custom_draw(player)
 
-    # display to the screen 
-    # screen.blit(background, (0,0))
-    # all_sprites_group.draw(screen)
-    
-    all_sprites_group.update()
-    ui.update()
-    # pygame.draw.rect(screen,"green", player.rect, width = 2)
+        all_sprites_group.update()
+        ui.update()
+        # Update the screen
+        pygame.display.update()
+        clock.tick(FPS)
+        await asyncio.sleep(0)
 
-
-    # Update the screen
-    pygame.display.update()
-    clock.tick(FPS)
+asyncio.run(main())
