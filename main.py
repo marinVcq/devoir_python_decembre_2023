@@ -130,11 +130,12 @@ sprite_sheet = pygame.image.load("assets/characters.png").convert_alpha()
 class UI:
     def __init__(self, player):
         self.player = player
-        self.font = pygame.font.Font(None, 36)
+        self.font = pygame.font.Font("kongtext.ttf", 20)
+        self.text_color = (20, 250, 0) 
 
     def update(self):
-        health_text = self.font.render(f"Health: {self.player.health}", True, (255, 255, 255))
-        enemies_text = self.font.render(f"Enemies Killed: {self.player.enemies_killed}", True, (255, 255, 255))
+        health_text = self.font.render(f"HP: {self.player.health} %", True, self.text_color)
+        enemies_text = self.font.render(f"Esprits capturés: {self.player.enemies_killed}", True, self.text_color)
 
         # Position of UI elements as needed
         health_rect = health_text.get_rect(topleft=(10, 10))
