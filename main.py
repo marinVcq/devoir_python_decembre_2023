@@ -2,11 +2,54 @@ import pygame, asyncio, os
 from sys import exit 
 import math
 
+# Character class
+class Character:
+    def __init__(self, name, power, damage, sheet_position, map_position, speed):
+        self.name = name
+        self.power = power
+        self.damage = damage
+        self.sheet_position = sheet_position
+        self.map_position = map_position
+        self.speed = speed
+
+# Store  game color's variable
+class Colors:
+    WHITE = (255, 255, 255)
+    YELLOW = (255, 215, 0)
+    DARK_GRAY = (33, 33, 33)
+
+# Store game asset's path variable
+class Paths:
+    BACKGROUND = "background/background.png"
+    CHARACTERS_SPRITE_SHEET = "assets/characters.png"
+    MENU_IMAGE = "menu.png"
+    BULLET_IMAGE = "bullet/1.png"
+    FONT_PATH = "kongtext.ttf"
+
+# Gamestate class
 class GameState:
     RULES_SCREEN = 0
     CHARACTER_SELECTION = 1
     PLAYING = 2
     GAME_OVER = 3
+
+CHARACTERS = [
+    Character(name="Vulcanus", power="fire", damage=10, sheet_position=(468,288), map_position=(400,300),speed=4),
+    Character(name="Aeris", power="wind", damage=15, sheet_position=(312, 288), map_position=(400,300),speed=4),
+    Character(name="Voltara", power="thunder", damage=20, sheet_position=(156, 0), map_position=(400,300),speed=4),
+    Character(name="Stonewarden", power="earth", damage=25, sheet_position=(0, 0), map_position=(400,300),speed=4),
+    Character(name="Nereida", power="water", damage=30, sheet_position=(0, 288), map_position=(400,300),speed=4),
+]
+
+ENEMIES = [
+    Character(name="Infernus", power="fire", damage=10, sheet_position=(468,288), map_position=(0,0),speed=2),
+    Character(name="Galeblade", power="wind", damage=15, sheet_position=(312, 288), map_position=(1600,450),speed=3),
+    Character(name="Fulgur", power="thunder", damage=20, sheet_position=(156, 0), map_position=(1600,650),speed=2),
+    Character(name="Terravus", power="earth", damage=25, sheet_position=(0, 0), map_position=(1500,750),speed=2),
+    Character(name="Tsunewave", power="water", damage=30, sheet_position=(0, 288), map_position=(1800,300),speed=3),
+]
+
+
 
 current_game_state = GameState.CHARACTER_SELECTION
 
@@ -50,6 +93,7 @@ async def end_screen(player_won):
                 exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
+                    current_game_state = GameState.CHARACTER_SELECTION
                     return True
 
         screen.fill((33, 33, 33))
@@ -58,44 +102,9 @@ async def end_screen(player_won):
         pygame.display.flip()
         await asyncio.sleep(0)
 
-class Character:
-    def __init__(self, name, power, damage, sheet_position, map_position, speed):
-        self.name = name
-        self.power = power
-        self.damage = damage
-        self.sheet_position = sheet_position
-        self.map_position = map_position
-        self.speed = speed
 
-# Store  game color's variable
-class Colors:
-    WHITE = (255, 255, 255)
-    YELLOW = (255, 215, 0)
-    DARK_GRAY = (33, 33, 33)
 
-# Store game asset's path variable
-class Paths:
-    BACKGROUND = "background/background.png"
-    CHARACTERS_SPRITE_SHEET = "assets/characters.png"
-    MENU_IMAGE = "menu.png"
-    BULLET_IMAGE = "bullet/1.png"
-    FONT_PATH = "kongtext.ttf"  
 
-CHARACTERS = [
-    Character(name="Vulcanus", power="fire", damage=10, sheet_position=(468,288), map_position=(400,300),speed=4),
-    Character(name="Aeris", power="wind", damage=15, sheet_position=(312, 288), map_position=(400,300),speed=4),
-    Character(name="Voltara", power="thunder", damage=20, sheet_position=(156, 0), map_position=(400,300),speed=4),
-    Character(name="Stonewarden", power="earth", damage=25, sheet_position=(0, 0), map_position=(400,300),speed=4),
-    Character(name="Nereida", power="water", damage=30, sheet_position=(0, 288), map_position=(400,300),speed=4),
-]
-
-ENEMIES = [
-    Character(name="Infernus", power="fire", damage=10, sheet_position=(468,288), map_position=(0,0),speed=2),
-    Character(name="Galeblade", power="wind", damage=15, sheet_position=(312, 288), map_position=(1600,450),speed=3),
-    Character(name="Fulgur", power="thunder", damage=20, sheet_position=(156, 0), map_position=(1600,650),speed=2),
-    Character(name="Terravus", power="earth", damage=25, sheet_position=(0, 0), map_position=(1500,750),speed=2),
-    Character(name="Tsunewave", power="water", damage=30, sheet_position=(0, 288), map_position=(1800,300),speed=3),
-]
 
 DAMAGE_MATRIX = {
     ("fire", "water"): 25,
@@ -225,6 +234,7 @@ class Player(pygame.sprite.Sprite):
 
         if self.health <= 0:
             current_game_state = GameState.GAME_OVER
+            player.kill()
 
     def load_sprites(self, sheet_position):
         sprite_width, sprite_height = 52, 72
@@ -622,7 +632,7 @@ async def main():
     global all_sprites_group, projectile_group, enemy_group, selected_character, player, current_game_state
 
     while True:
-        pygame.event.pump()  # Process events
+        pygame.event.pump()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -641,6 +651,7 @@ async def main():
                 )
                 all_sprites_group.add(player)
                 ui = UI(player)
+                enemies = [Enemy(map_position=enemy.map_position, sheet_position=enemy.sheet_position, power=enemy.power, damage=enemy.damage, speed=enemy.speed) for enemy in ENEMIES]
                 current_game_state = GameState.PLAYING
 
         elif current_game_state == GameState.PLAYING:
