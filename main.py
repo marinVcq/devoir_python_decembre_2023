@@ -56,11 +56,11 @@ current_game_state = GameState.CHARACTER_SELECTION
 POWERS = ['fire', 'wind', 'thunder', 'earth', 'water']
 
 CHARACTERS = [
-    Character(name="Vulcanus", power="fire", damage=10, sheet_position=(468,288), map_position=(400,300),speed=4),
-    Character(name="Aeris", power="wind", damage=15, sheet_position=(312, 288), map_position=(400,300),speed=4),
-    Character(name="Voltara", power="thunder", damage=20, sheet_position=(156, 0), map_position=(400,300),speed=4),
-    Character(name="Stonewarden", power="earth", damage=25, sheet_position=(0, 0), map_position=(400,300),speed=4),
-    Character(name="Nereida", power="water", damage=30, sheet_position=(0, 288), map_position=(400,300),speed=4),
+    Character(name="Vulcanus", power="fire", damage=15, sheet_position=(468,288), map_position=(400,300),speed=4),
+    Character(name="Aeris", power="wind", damage=10, sheet_position=(312, 288), map_position=(400,300),speed=5),
+    Character(name="Voltara", power="thunder", damage=8, sheet_position=(156, 0), map_position=(400,300),speed=6),
+    Character(name="Stonewarden", power="earth", damage=15, sheet_position=(0, 0), map_position=(400,300),speed=4),
+    Character(name="Nereida", power="water", damage=12, sheet_position=(0, 288), map_position=(400,300),speed=4),
 ]
 
 ENEMIES = [
@@ -72,11 +72,11 @@ ENEMIES = [
 ]
 
 DAMAGE_MATRIX = {
-    ("fire", "water"): 25,
-    ("wind", "fire"): 25,
-    ("thunder", "wind"): 25,
-    ("earth", "thunder"): 25,
-    ("water", "earth"): 25,
+    ("wind", "fire"): 30,
+    ("thunder", "wind"): 20,
+    ("earth", "thunder"): 24,
+    ("water", "earth"): 37,
+    ("fire", "water"): 36,
 }
 
 async def start_screen():
@@ -152,6 +152,8 @@ def draw_character_menu(selected_index):
 
     line_spacing = 55
     label_margin_top = 60
+    char_info_margin_top = 60
+
 
     label_text = label_font.render("Choose Your Character", True, (255, 255, 255))
     label_rect = label_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4 + label_margin_top))
@@ -159,16 +161,18 @@ def draw_character_menu(selected_index):
     # Blit label onto the screen
     screen.blit(label_text, label_rect)
 
+    # Load information sheets for characters
+    info_sheets = [pygame.image.load(f"{character.name.lower()}_info.png") for character in CHARACTERS]
 
     menu_text = [menu_font.render(character.name, True, (240, 240, 240)) for character in CHARACTERS]
 
     for i, text_surface in enumerate(menu_text):
-        rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + i * line_spacing))
+        rect = text_surface.get_rect(center=(3 * SCREEN_WIDTH // 4, SCREEN_HEIGHT // 2 + i * line_spacing))
 
         # Increase space between character names
         rect.y += i * 10  
 
-        pygame.draw.rect(screen, (33, 33, 33), rect)
+        pygame.draw.rect(screen, (16, 17, 16), rect)
 
         # Add padding to the selected rectangle
         if i == selected_index:
@@ -177,9 +181,14 @@ def draw_character_menu(selected_index):
 
             pygame.draw.rect(screen, (255, 215, 0), selected_rect, 4)
 
+            # Display information sheet for the selected character
+            info_sheet_rect = info_sheets[selected_index].get_rect(topleft=(50,260))
+            screen.blit(info_sheets[selected_index], info_sheet_rect)
+
         screen.blit(text_surface, rect)
 
     pygame.display.flip()
+
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, sheet_position=(0, 0), power="fire", damage=10, map_position=(400,300), speed = 4, max_health=100):
@@ -200,10 +209,10 @@ class Player(pygame.sprite.Sprite):
         self.health = max_health
         self.enemies_killed = 0
 
-    def take_damage(self, projectile_power):
-        default_damage = 2
+    def take_damage(self, shooter):
+        default_damage = shooter.damage
 
-        damage_taken = DAMAGE_MATRIX.get((self.power, projectile_power), default_damage)
+        damage_taken = DAMAGE_MATRIX.get((self.power, shooter.power), default_damage)
         self.health -= damage_taken
 
         # print(f"Player power: {self.power}, projectile_power: {projectile_power}")
@@ -349,18 +358,24 @@ class Enemy(pygame.sprite.Sprite):
         # Draw the filled part of the health bar based on current health
         pygame.draw.rect(screen, (0, 255, 0), (health_bar_x, health_bar_y, health_bar_width, 5))
 
-    def take_damage(self, projectile_power):
-        default_damage = 20
+    def take_damage(self, shooter):
+        # Check if the shooter is not of the class Enemy
+        if not isinstance(shooter, Enemy):
+            default_damage = shooter.damage
 
-        damage_taken = DAMAGE_MATRIX.get((self.power, projectile_power), default_damage)
-        self.health -= damage_taken
+            damage_taken = DAMAGE_MATRIX.get((self.power, shooter.power), default_damage)
+            self.health -= damage_taken
 
-        # print(f"Enemy power: {self.power}, projectile_power: {projectile_power}")
-        # print(f"Enemy took {damage_taken} damage. Remaining health: {self.health}\n")
+            # print(f"Enemy power: {self.power}, projectile_power: {projectile_power}")
+            # print(f"Enemy took {damage_taken} damage. Remaining health: {self.health}\n")
 
-        if self.health <= 0:
-            player.enemies_killed += 1
-            self.kill()
+            if self.health <= 0:
+                player.enemies_killed += 1
+                self.kill()
+                # Remove the enemy from the enemies list
+                if self in enemies:
+                    enemies.remove(self)
+
 
     def hunt_player(self, player):
         player_vector = pygame.math.Vector2(player.rect.center)
@@ -538,13 +553,13 @@ class Projectile(pygame.sprite.Sprite):
 
     def handle_collisions(self, player, enemies):
         if self.shooter != player and self.rect.colliderect(player.rect):
-            player.take_damage(projectile_power=self.power)
+            player.take_damage(self.shooter)
             self.kill()
 
         enemy_hits = pygame.sprite.spritecollide(self, enemies, False)
         for enemy in enemy_hits:
             if self.shooter != enemy:
-                enemy.take_damage(projectile_power=self.power)
+                enemy.take_damage(self.shooter)
                 self.kill()
 
     def projectile_movement(self):
@@ -590,7 +605,7 @@ async def character_selection_menu():
                 elif event.key == pygame.K_RETURN:
                     return CHARACTERS[selected_index]
 
-        screen.fill((33, 33, 33))
+        screen.fill((16, 17, 16))
         x_centered = (screen.get_width() - menu_image.get_width()) // 2
         screen.blit(menu_image, (x_centered, 0))
 
